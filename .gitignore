@@ -1,4 +1,5 @@
 .DS_Store
 .svn
+data/access/**
 data/verifier/**
 vendor/**
