@@ -1,5 +1,6 @@
 .DS_Store
 .svn
+data/consumer_tokens
 data/access/**
 data/verifier/**
 vendor/**
