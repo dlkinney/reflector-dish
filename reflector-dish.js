@@ -42,7 +42,7 @@ var ReflectorDish = function() {
     self.client.get(options.uri, self.accessToken, self.accessSecret, options.callback)
   }
   
-  self.getMembersOfList = function(listSlug, callback) {
+  self.getMembersOfList = function(listURI, callback) {
     var members = []
     var onData = function(membersOnPage) {
       membersOnPage.forEach(function(member) {
@@ -54,19 +54,19 @@ var ReflectorDish = function() {
     }
     
     self._getMembersOfList({
-      listSlug: listSlug
+      listURI: listURI
     , data: onData
     , complete: onComplete
     })
   }
   
   self._getMembersOfList = function(options) {
-    var listSlug   = options.listSlug
+    var listURI    = options.listURI.replace(/^[@/]/, '')
     var cursor     = options.cursor || -1
     var onData     = options.data
     var onComplete = options.complete
     
-    var uri = "http://api.twitter.com/1/" + self.username + "/" + listSlug + "/members.json?cursor=" + cursor
+    var uri = "http://api.twitter.com/1/" + listURI + "/members.json?cursor=" + cursor
     var handler = function(err, data) {
       if (err) throw err
       
@@ -77,7 +77,7 @@ var ReflectorDish = function() {
       
       if (nextCursor > 0) {
         self._getMembersOfList({
-          listSlug: listSlug
+          listURI:  listURI
         , cursor:   nextCursor
         , data:     onData
         , complete: onComplete
@@ -93,19 +93,14 @@ var ReflectorDish = function() {
 }
 
 var username = process.argv[2]
-var listSlug = process.argv[3]
+var listURI  = process.argv[3]
 
 reflectorDish = new ReflectorDish()
 reflectorDish.init(username, function() {
-  reflectorDish.getMembersOfList(listSlug, function(members) {
+  console.log("Loading members of " + listURI + " ...")
+  reflectorDish.getMembersOfList(listURI, function(members) {
+    console.log("  Found " + members.length + " members")
+    console.log("Streaming tweets from members...")
     // TODO implement me
-console.log("Number of members: " + members.length)
-console.log(
-  sys.inspect(
-    members.map(
-      function(member) { return member.id }
-    )
-  )
-)
   })
 })
