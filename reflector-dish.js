@@ -1,8 +1,10 @@
 var sys           = require('sys')
+var querystring   = require('querystring')
+
 var oauth         = require('./lib/oauth_client.js')
 var authorization = require('./lib/authorization.js')
 var data          = require('./lib/data.js')
-var twitter       = require('./lib/twitter.js')
+var Parser        = require('./lib/parser.js')
 
 var ReflectorDish = function() {
   var self = this
@@ -92,6 +94,28 @@ var ReflectorDish = function() {
     })
   }
   
+  self.streamFilter = function(params, onTweet) {
+    var parser = new Parser()
+    parser.addListener('object', onTweet)
+    
+    var body = {}
+    if (params.follow)    body.follow    = params.follow.join(',')
+    if (params.locations) body.locations = params.locations.join(',')
+    if (params.track)     body.track     = params.track.join(',')
+    
+    self.streamClient.post({
+      uri: '/1/statuses/filter.json'
+    , body: body
+    , data: function(chunk) { parser.receive(chunk) }
+    , error: function(response) { 
+        console.log(response.statusCode)
+        console.log(sys.inspect(response.headers))
+        response.addListener('data', function(chunk) {
+          console.log(chunk.toString('utf8'))
+        })
+      }
+    })
+  }
 }
 
 var username = process.argv[2]
@@ -103,6 +127,12 @@ reflectorDish.init(username, function() {
   reflectorDish.getMembersOfList(listURI, function(members) {
     console.log("  Found " + members.length + " members")
     console.log("Streaming tweets from members...")
-    // TODO implement me
+    var userIDs = members.map(function(member) {
+      return member.id
+    })
+    var params = { follow: userIDs }
+    reflectorDish.streamFilter(params, function(tweet) {
+      console.log(sys.inspect(tweet))
+    })
   })
 })
