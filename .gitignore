@@ -4,3 +4,4 @@ data/consumer_tokens
 data/access/**
 data/verifier/**
 vendor/**
+scratch.js

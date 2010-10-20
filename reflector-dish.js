@@ -35,7 +35,7 @@ var ReflectorDish = function() {
   self._loadAccessTokens = function(onComplete) {
     authorization.loadAccessTokens({
       username: self.username
-    , client: self.client
+    , client: self.restClient
     , callback: function(accessToken, accessTokenSecret) {
         self.restClient.setAccess(accessToken, accessTokenSecret)
         self.streamClient.setAccess(accessToken, accessTokenSecret)
