@@ -1,16 +1,18 @@
 var sys           = require('sys')
+var oauth         = require('oauth-client')
 var authorization = require('./lib/authorization.js')
 var data          = require('./lib/data.js')
 var twitter       = require('./lib/twitter.js')
 
-
 var ReflectorDish = function() {
   var self = this
   
+  self.restClient = oauth.createClient(80, 'api.twitter.com', false)
+  self.streamClient = oauth.createClient(80, 'stream.twitter.com', false)
   self.username = null
-  self.client = null
-  self.accessToken = null
-  self.accessSecret = null
+  self.consumer = null
+  self.signer = null
+  self.access = null
   
   self.init = function(username, onComplete) {
     self.username = username
@@ -21,7 +23,7 @@ var ReflectorDish = function() {
   
   self._loadConsumerTokens = function(onComplete) {
     data.loadConsumerTokens(function(consumerKey, consumerSecret) {
-      self.client = twitter.client(consumerKey, consumerSecret)
+      self.consumer = oauth.createConsumer(consumerKey, consumerSecret);
       if (onComplete) onComplete()
     })
   }
@@ -31,15 +33,25 @@ var ReflectorDish = function() {
       username: self.username
     , client: self.client
     , callback: function(token, secret) {
-        self.accessToken = token
-        self.accessSecret = secret
+        self.access = oauth.createToken(token, secret)
+        self.signer = oauth.createHmac(self.consumer, self.access)
         if (onComplete) onComplete()
       }
     })
   }
   
   self.get = function(options) {
-    self.client.get(options.uri, self.accessToken, self.accessSecret, options.callback)
+    request = self.restClient.request('GET', options.uri, options.headers, null, self.signer)
+    request.addListener('response', function(response) {
+      var data = []
+      response.addListener('data', function(chunk) {
+        data.push(chunk)
+      })
+      response.addListener('end', function() {
+        options.callback(response.statusCode, response.headers, data.join(''))
+      })
+    })
+    request.end()
   }
   
   self.getMembersOfList = function(listURI, callback) {
@@ -67,10 +79,10 @@ var ReflectorDish = function() {
     var onComplete = options.complete
     
     var uri = "http://api.twitter.com/1/" + listURI + "/members.json?cursor=" + cursor
-    var handler = function(err, data) {
-      if (err) throw err
+    var handler = function(statusCode, headers, body) {
+      if (statusCode != 200) throw "Unable to get member list: " + statusCode + " " + JSON.stringify(headers)
       
-      var response = JSON.parse(data)
+      var response = JSON.parse(body)
       var membersOnPage = response.users
       var nextCursor = response.next_cursor
       onData(membersOnPage)
