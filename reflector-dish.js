@@ -44,6 +44,14 @@ var ReflectorDish = function() {
     })
   }
   
+  self._onHTTPError = function(response) {
+    console.log(response.statusCode)
+    console.log(sys.inspect(response.headers))
+    response.addListener('data', function(chunk) {
+      console.log(chunk.toString('utf8'))
+    })
+  }
+  
   self.getMembersOfList = function(listURI, callback) {
     var allMembers = []
     var onMembers = function(members) {
@@ -68,10 +76,7 @@ var ReflectorDish = function() {
     var onMembers  = options.members
     var onComplete = options.complete
     
-    var uri = "http://api.twitter.com/1/" + listURI + "/members.json?cursor=" + cursor
-    var err = function(response) {
-      if (response) throw new Error(sys.inspect(response))
-    }
+    var uri = "/1/" + listURI + "/members.json?cursor=" + cursor
     var success = function(body) {
       var response = JSON.parse(body)
       
@@ -89,8 +94,17 @@ var ReflectorDish = function() {
     
     self.restClient.get({ 
       uri: uri
-    , error: err
+    , error: self._onHTTPError
     , complete: success
+    })
+  }
+  
+  self.retweet = function(tweet, onComplete) {
+    var uri = '/1/statuses/retweet/' + tweet.id + '.json'
+    self.restClient.post({
+      uri: uri
+    , error: self._onHTTPError
+    , complete: onComplete
     })
   }
   
@@ -107,21 +121,42 @@ var ReflectorDish = function() {
       uri: '/1/statuses/filter.json'
     , body: body
     , data: function(chunk) { parser.receive(chunk) }
-    , error: function(response) { 
-        console.log(response.statusCode)
-        console.log(sys.inspect(response.headers))
-        response.addListener('data', function(chunk) {
-          console.log(chunk.toString('utf8'))
-        })
-      }
+    , error: self._onHTTPError
     })
   }
 }
 
 var username = process.argv[2]
 var listURI  = process.argv[3]
+var hashtag  = process.argv[4]
 
-reflectorDish = new ReflectorDish()
+var tweetIDs = []
+var reflectorDish = new ReflectorDish()
+
+var processTweet = function(tweet) {
+  // ignore retweets
+  if (tweet.retweeted_status) return
+  if (tweet.text && tweet.text.search("RT ") == 0) return
+  
+  // ignore tweets I've already seen
+  if (tweet.id && tweetIDs.indexOf(tweet.id) >= 0) return
+  if (tweet.new_id && tweetIDs.indexOf(tweet.new_id) >= 0) return
+  
+  if (tweet.entities && tweet.entities.hashtags) {
+    var containsHashTag = tweet.entities.hashtags.some(function(ht) {
+      return (ht.text == hashtag)
+    })
+    if (containsHashTag) {
+      tweetIDs.push(tweet.id)
+      tweetIDs.push(tweet.new_id)
+      console.log("  Retweeting: [" + tweet.new_id + "] " + tweet.text)
+      reflectorDish.retweet(tweet, function() {
+        console.log("    Successfully retweeted " + tweet.new_id)
+      })
+    }
+  }
+}
+
 reflectorDish.init(username, function() {
   console.log("Loading members of " + listURI + " ...")
   reflectorDish.getMembersOfList(listURI, function(members) {
@@ -131,8 +166,6 @@ reflectorDish.init(username, function() {
       return member.id
     })
     var params = { follow: userIDs }
-    reflectorDish.streamFilter(params, function(tweet) {
-      console.log(sys.inspect(tweet))
-    })
+    reflectorDish.streamFilter(params, processTweet)
   })
 })
