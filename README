@@ -1,0 +1,60 @@
+Reflector Dish
+==============
+
+Inspired by Jonathan 'Wolf' Rentzsch's Twitter Reflector Dish used for the C4 
+conference. http://github.com/rentzsch/TwitterReflectorDish
+
+Reflector Dish is a conference backchannel in a box. 
+
+
+Overview
+--------
+
+The Reflector Dish retweets messages from members of a given list containing a 
+specified #hashtag. 
+
+*This document is a work in progress.*
+
+
+Why?
+----
+
+The use of a Reflector Dish inhibits hashtag spamming during the event. 
+
+
+Usage
+-----
+
+Quick example:
+
+    >> npm install oauth-client
+    >> node reflector-dish.js your_account username/list_name hashtag
+
+For @secondconf, I ran:
+
+    >> node reflector-dish.js secondconf secondconf/attendees 2c
+
+
+License
+-------
+
+See LICENSE in the project. It is an MIT-style license. 
+
+
+Acknowledgements
+----------------
+
+To be written.
+
+
+Contributing
+------------
+
+To be written.
+
+
+Meta
+----
+
+To be written. 
+
