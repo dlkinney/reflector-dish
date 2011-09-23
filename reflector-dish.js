@@ -6,6 +6,18 @@ var authorization = require('./lib/authorization.js')
 var data          = require('./lib/data.js')
 var Parser        = require('./lib/parser.js')
 
+var merge = function(a, b) {
+	var keys = Object.keys(b);
+
+	for (var key in keys) {
+		if (typeof(keys[key]) !== 'function') {
+			a[keys[key]] = b[keys[key]];
+		}
+	}
+	
+	return a;
+};
+
 var ReflectorDish = function() {
   var self = this
   
@@ -85,7 +97,7 @@ var ReflectorDish = function() {
       
       var nextCursor = response.next_cursor
       if (nextCursor > 0) {
-        var nextOptions = Object.merge(options, { cursor: nextCursor })
+        var nextOptions = merge(options, { cursor: nextCursor })
         self._getMembersOfList(nextOptions)
       } else {
         onComplete()
