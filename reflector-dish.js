@@ -6,6 +6,8 @@ var authorization = require('./lib/authorization.js')
 var data          = require('./lib/data.js')
 var Parser        = require('./lib/parser.js')
 
+var RETWEET_TURNAROUND = 30 * 1000; // 30 seconds
+
 var merge = function(a, b) {
 	var keys = Object.keys(b);
 
@@ -112,7 +114,7 @@ var ReflectorDish = function() {
   }
   
   self.retweet = function(tweet, onComplete) {
-    var uri = '/1/statuses/retweet/' + tweet.id + '.json'
+    var uri = '/1/statuses/retweet/' + tweet.id_str + '.json'
     self.restClient.post({
       uri: uri
     , error: self._onHTTPError
@@ -151,20 +153,22 @@ var processTweet = function(tweet) {
   if (tweet.text && tweet.text.search("RT ") == 0) return
   
   // ignore tweets I've already seen
-  if (tweet.id && tweetIDs.indexOf(tweet.id) >= 0) return
-  if (tweet.new_id && tweetIDs.indexOf(tweet.new_id) >= 0) return
+  if (tweet.id_str && tweetIDs.indexOf(tweet.id_str) >= 0) return
   
   if (tweet.entities && tweet.entities.hashtags) {
     var containsHashTag = tweet.entities.hashtags.some(function(ht) {
       return (ht.text == hashtag)
-    })
+    });
     if (containsHashTag) {
-      tweetIDs.push(tweet.id)
-      tweetIDs.push(tweet.new_id)
-      console.log("  Retweeting: [" + tweet.new_id + "] " + tweet.text)
-      reflectorDish.retweet(tweet, function() {
-        console.log("    Successfully retweeted " + tweet.new_id)
-      })
+      console.log("  Scheduling retweet: [" + tweet.id_str + "] " + tweet.text)
+      var retweetIt = function() {
+        tweetIDs.push(tweet.id_str);
+        console.log("  Retweeting: [" + tweet.id_str + "] " + tweet.text)
+        reflectorDish.retweet(tweet, function() {
+          console.log("    Successfully retweeted " + tweet.id_str)
+        })
+      };
+      setTimeout(retweetIt, RETWEET_TURNAROUND);
     }
   }
 }
